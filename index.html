@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Lead Uploader — CSV to CRM</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="bar">
+  <h1>Lead Uploader</h1>
+  <span class="sub">CSV &rarr; phone filter &rarr; CRM</span>
+  <span id="health" class="pill pill-muted">checking proxy&hellip;</span>
+</header>
+
+<main>
+  <!-- STEP 1 ------------------------------------------------------------ -->
+  <section class="card" id="step-upload">
+    <h2><span class="n">1</span> Choose your CSV</h2>
+    <div id="drop" class="drop">
+      <p class="drop-main">Drop a CSV here, or <label class="link" for="file">browse</label></p>
+      <p class="drop-sub">Nothing is uploaded anywhere until you press Post.</p>
+      <input type="file" id="file" accept=".csv,text/csv" hidden>
+    </div>
+    <p id="file-info" class="hint"></p>
+  </section>
+
+  <!-- STEP 2 ------------------------------------------------------------ -->
+  <section class="card hidden" id="step-map">
+    <h2><span class="n">2</span> Match your columns</h2>
+    <p class="hint">Auto-matched from your headers. Pick <em>Fixed value</em> to send the same text for every row.</p>
+    <div id="mapping" class="grid"></div>
+    <div class="opts">
+      <label class="opt">
+        <input type="checkbox" id="opt-dupes" checked>
+        <span>Skip duplicate phone numbers <small>(keeps the first of each)</small></span>
+      </label>
+      <label class="opt">
+        <input type="checkbox" id="opt-swap" checked>
+        <span>Fix rows where phone and email are swapped</span>
+      </label>
+      <label class="opt opt-inline">
+        <span>Send at once</span>
+        <input type="range" id="opt-conc" min="1" max="12" value="6">
+        <output id="conc-val">6</output>
+      </label>
+      <label class="opt opt-inline">
+        <span>Access key <small>(only if you set ACCESS_KEY)</small></span>
+        <input type="password" id="opt-key" placeholder="leave blank if unset" autocomplete="off">
+      </label>
+    </div>
+    <button class="btn" id="btn-check">Check the numbers &rarr;</button>
+  </section>
+
+  <!-- STEP 3 ------------------------------------------------------------ -->
+  <section class="card hidden" id="step-review">
+    <h2><span class="n">3</span> Review</h2>
+    <div class="stats" id="stats"></div>
+    <div class="tabs" id="tabs">
+      <button class="tab is-on" data-f="ready">Ready</button>
+      <button class="tab" data-f="fixed">Repaired</button>
+      <button class="tab" data-f="dupe">Duplicates</button>
+      <button class="tab" data-f="bad">Rejected</button>
+    </div>
+    <div class="tablewrap">
+      <table id="preview">
+        <thead><tr><th>Row</th><th>Name</th><th>Phone</th><th>Email</th><th>City</th><th>Note</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="hint" id="preview-note"></p>
+    <div class="row">
+      <button class="btn btn-go" id="btn-post">Post <span id="post-count">0</span> leads to CRM</button>
+      <button class="btn btn-ghost" id="btn-dl-rejected">Download rejected rows</button>
+    </div>
+    <p class="warn">Posting writes straight into your live CRM and cannot be undone from here.</p>
+  </section>
+
+  <!-- STEP 4 ------------------------------------------------------------ -->
+  <section class="card hidden" id="step-run">
+    <h2><span class="n">4</span> Posting</h2>
+    <div class="progress"><div class="progress-fill" id="bar"></div></div>
+    <div class="stats" id="runstats"></div>
+    <div class="row">
+      <button class="btn btn-stop hidden" id="btn-stop">Stop</button>
+      <button class="btn btn-ghost hidden" id="btn-resume">Resume remaining</button>
+      <button class="btn btn-ghost hidden" id="btn-dl-report">Download report</button>
+      <button class="btn btn-ghost hidden" id="btn-dl-failed">Download failed rows</button>
+    </div>
+    <div class="tablewrap tablewrap-log">
+      <table id="log">
+        <thead><tr><th>Row</th><th>Status</th><th>Phone</th><th>Detail</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script src="lib.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

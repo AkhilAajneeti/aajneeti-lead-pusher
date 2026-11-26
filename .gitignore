@@ -1,0 +1,7 @@
+node_modules/
+.wrangler/
+.dev.vars
+*-report.csv
+*-failed.csv
+*-rejected.csv
+.DS_Store
