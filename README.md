@@ -98,12 +98,44 @@ node push.js "C:\path\to\leads.csv" --post    :: posts, after you type yes
 | `--resume` | skip rows already logged as `ok`, to retry a part-finished run |
 | `--exclude FILE` | CSV of leads **already in the CRM** — their numbers are skipped. Repeatable. |
 | `--key KEY` | send `x-access-key`, for a proxy that has `ACCESS_KEY` set |
+| `--set field=value` | force a field on every row, e.g. `--set cProject=prestige`. Repeatable. |
 | `--yes` | skip the confirmation prompt (for scheduled runs) |
 | `--url URL` | post somewhere else |
 | `--log FILE` | log location (default `<csv>-log.csv`) |
 
 Safety built in: it is a dry run unless you pass `--post`, it then asks you to type `yes`,
 `Ctrl+C` stops it cleanly, and every row is logged so `--resume` never double-posts.
+
+### Required fields
+
+Five fields must have a value or the row is refused — in the browser, in the CLI and
+again at the proxy:
+
+| Field | Why it is required |
+|---|---|
+| `firstName` | the lead is anonymous without it |
+| `phoneNumber` | must be `+91` + 10 digits starting 6–9; the CRM rejects anything else |
+| `cProject` | which project the lead is for |
+| `cProjectNomen` | the project's CRM identifier |
+| `cClientNomen` | which client the lead belongs to |
+
+The last three decide **who the lead is routed to**. A lead that lands in the CRM without
+them cannot be assigned to anyone, and there is no API to go back and fix it, so they are
+refused up front rather than posted blank.
+
+`emailAddress` and `addressCity` stay optional. `cSubSource` defaults to `Meta`.
+
+**If your sheet has no column for one of them**, do not leave it blank — fill it for every
+row with `--set`:
+
+```bat
+node push.js "leads.csv" --set cProject=prestige
+node push.js "leads.csv" --set cProject=prestige --set cClientNomen=PradeepRajput…
+```
+
+`--set` overrides the sheet, so it also fixes a column that exists but is empty — which is
+what the Prestige export looked like. In the web UI, choose *fixed value* on that field
+instead; it refuses to continue until every required field is mapped or given one.
 
 ### Not re-posting leads that are already in the CRM
 

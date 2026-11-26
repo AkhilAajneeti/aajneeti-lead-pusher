@@ -106,6 +106,49 @@ if (file && fs.existsSync(file)) {
   rejects.forEach((x) => console.log('    ' + x));
 }
 
+/* ---------- required fields ---------- */
+console.log('required fields');
+{
+  const full = {
+    firstName: 'Neelam Gupta', emailAddress: 'n@x.com', phoneNumber: '+919582449101',
+    addressCity: 'Faridabad', cProject: 'prestige', cSubSource: 'Meta',
+    cClientNomen: 'PradeepRajputTheIntelligentRealtors', cProjectNomen: 'prestige',
+  };
+  eq('complete lead passes', L.missingRequired(full).length, 0);
+
+  /* The three routing fields are the point of this check. */
+  ['cProject', 'cProjectNomen', 'cClientNomen'].forEach((k) => {
+    const lead = Object.assign({}, full); lead[k] = '';
+    eq(k + ' empty is caught', L.missingRequired(lead).join(), k);
+  });
+  eq('firstName empty is caught',
+    L.missingRequired(Object.assign({}, full, { firstName: '' })).join(), 'firstName');
+
+  /* Whitespace is not a value. */
+  eq('whitespace-only is empty',
+    L.missingRequired(Object.assign({}, full, { cProject: '   ' })).join(), 'cProject');
+
+  /* Optional fields must NOT be demanded. */
+  eq('email stays optional',
+    L.missingRequired(Object.assign({}, full, { emailAddress: '' })).length, 0);
+  eq('city stays optional',
+    L.missingRequired(Object.assign({}, full, { addressCity: '' })).length, 0);
+
+  /* Several at once, reported in field order. */
+  eq('reports all missing',
+    L.missingRequired(Object.assign({}, full, { cProject: '', cClientNomen: '' })).join(','),
+    'cProject,cClientNomen');
+
+  /* Missing keys and junk input must not throw. */
+  eq('absent keys counted', L.missingRequired({}).length, 5);
+  eq('null lead is safe', L.missingRequired(null).length, 5);
+
+  /* The field list itself must agree. */
+  eq('exactly 5 required',
+    L.FIELDS.filter((f) => f.req).map((f) => f.key).join(','),
+    'firstName,phoneNumber,cProject,cProjectNomen,cClientNomen');
+}
+
 /* ---------- phoneSetFromCSV: the "already in the CRM" guard ---------- */
 console.log('already-in-CRM set');
 {

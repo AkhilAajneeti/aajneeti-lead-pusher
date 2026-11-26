@@ -15,6 +15,8 @@
  *   --exclude FILE      CSV of leads ALREADY in the CRM (export it from the CRM
  *                       web UI); their phone numbers are skipped. Repeatable.
  *   --key KEY           send x-access-key, for a proxy with ACCESS_KEY set
+ *   --set field=value   force a field on every row, e.g. --set cProject=prestige.
+ *                       Use when the sheet has no column for it. Repeatable.
  *   --yes               skip the "type yes to continue" prompt
  */
 'use strict';
@@ -28,7 +30,7 @@ const DEFAULT_URL = 'https://multiclientapi.aajneetiadvertising.com/';
 
 /* ---------- args ---------- */
 const TAKES_VALUE = ['limit', 'concurrency', 'url', 'log', 'key'];
-const REPEATABLE = ['exclude'];
+const REPEATABLE = ['exclude', 'set'];
 const BOOLEANS = ['post', 'allow-dupes', 'resume', 'yes'];
 
 const opts = {};
@@ -61,6 +63,7 @@ if (!file) {
   console.log('Usage: node push.js <file.csv> [--post] [--allow-dupes] [--limit N]');
   console.log('       [--concurrency N] [--url URL] [--log FILE] [--resume] [--yes]');
   console.log('       [--exclude already-in-crm.csv] [--key ACCESS_KEY]');
+  console.log('       [--set field=value]');
   console.log('\nWithout --post it is a dry run: it checks everything and sends nothing.');
   process.exit(1);
 }
@@ -73,6 +76,18 @@ const DO_POST = flag('post');
 const ALLOW_DUPES = flag('allow-dupes');
 const RESUME = flag('resume');
 const EXCLUDE = opts['exclude'] || [];
+const SET = {};
+(opts['set'] || []).forEach((pair) => {
+  const i = String(pair).indexOf('=');
+  const key = i === -1 ? pair : pair.slice(0, i);
+  if (i === -1) { console.error('--set needs field=value, got: ' + pair); process.exit(1); }
+  if (!L.FIELDS.some((f) => f.key === key)) {
+    console.error('--set: no such field "' + key + '". Valid: ' +
+      L.FIELDS.map((f) => f.key).join(', '));
+    process.exit(1);
+  }
+  SET[key] = pair.slice(i + 1).trim();
+});
 const KEY = opt('key', '');
 const URL_ = opt('url', DEFAULT_URL);
 const CONC = Math.min(12, Math.max(1, Number(opt('concurrency', 6)) || 6));
@@ -158,8 +173,18 @@ data.forEach((r, idx) => {
     cProjectNomen: cell(r, 'cProjectNomen'),
   };
 
+  /* --set wins over the sheet, so a missing column can be filled for every row. */
+  Object.keys(SET).forEach((k) => { lead[k] = SET[k]; });
+
   if (!fx.ok) { rejected.push({ line, phone, why: fx.why, name: lead.firstName }); return; }
-  if (!lead.firstName) { rejected.push({ line, phone, why: 'name is empty', name: '' }); return; }
+  const missing = L.missingRequired(lead);
+  if (missing.length) {
+    rejected.push({
+      line, phone, name: lead.firstName,
+      why: 'missing required: ' + missing.join(', '),
+    });
+    return;
+  }
   if (inCRM.has(fx.value)) {
     skippedInCRM.push({ line, phone: fx.value, name: lead.firstName });
     return;

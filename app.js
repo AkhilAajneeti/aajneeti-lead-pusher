@@ -5,7 +5,8 @@ const API = '/api/lead';
 
 /* Pure logic (CSV parsing, phone repair, field list) lives in lib.js so it can
    be unit-tested under Node. See test.js. */
-const { FIELDS, EMAIL_ISH, parseCSV, findHeaderRow, fixPhone } = LeadLib;
+const { FIELDS, EMAIL_ISH, parseCSV, findHeaderRow, fixPhone,
+        missingRequired } = LeadLib;
 
 /* ---------- state ---------- */
 const S = {
@@ -113,8 +114,19 @@ function valueOf(row, key) {
    Step 3 - validate and classify every row
    ========================================================= */
 function prepare() {
-  if (!S.map.firstName || !S.map.phoneNumber) {
-    alert('Please map both firstName and phoneNumber before continuing.');
+  /* Catch unmapped required fields here, rather than letting every row fail
+     validation one by one and showing 2,000 identical rejections. */
+  const unmapped = FIELDS.filter((f) => f.req).filter((f) => {
+    const m = S.map[f.key];
+    if (!m) return true;
+    if (m === '__fixed__') return (S.fixed[f.key] || '').trim() === '';
+    return false;
+  });
+  if (unmapped.length) {
+    alert('These fields are required and not set yet:\n\n'
+      + unmapped.map((f) => '  • ' + f.label).join('\n')
+      + '\n\nPick the column it came from, or choose "fixed value" and type one'
+      + '\nto use for every row.');
     return;
   }
 
@@ -153,9 +165,9 @@ function prepare() {
     let state;
     if (!fix.ok) {
       state = 'bad';
-    } else if (!lead.firstName) {
+    } else if (missingRequired(lead).length) {
       state = 'bad';
-      notes.push('the name is empty');
+      notes.push('missing required: ' + missingRequired(lead).join(', '));
     } else if (dupeOn && seen.has(fix.value)) {
       state = 'dupe';
       notes.push('same number as row ' + seen.get(fix.value));

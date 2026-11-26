@@ -9,9 +9,9 @@
     { key: 'phoneNumber',   label: 'phoneNumber',   req: true,  alias: ['phonenumber', 'phone', 'phone number', 'mobile', 'mobile number', 'contact', 'contact number', 'number'] },
     { key: 'emailAddress',  label: 'emailAddress',  req: false, alias: ['emailaddress', 'email', 'email address', 'mail', 'e-mail'] },
     { key: 'addressCity',   label: 'addressCity',   req: false, alias: ['city', 'addresscity', 'town', 'location', 'address city'] },
-    { key: 'cProject',      label: 'cProject',      req: false, alias: ['cproject', 'project'] },
-    { key: 'cProjectNomen', label: 'cProjectNomen', req: false, alias: ['projectnomen', 'cprojectnomen', 'project nomen'] },
-    { key: 'cClientNomen',  label: 'cClientNomen',  req: false, alias: ['cclientnomen', 'clientnomen', 'client', 'client nomen'] },
+    { key: 'cProject',      label: 'cProject',      req: true,  alias: ['cproject', 'project'] },
+    { key: 'cProjectNomen', label: 'cProjectNomen', req: true,  alias: ['projectnomen', 'cprojectnomen', 'project nomen'] },
+    { key: 'cClientNomen',  label: 'cClientNomen',  req: true,  alias: ['cclientnomen', 'clientnomen', 'client', 'client nomen'] },
     { key: 'cSubSource',    label: 'cSubSource',    req: false, alias: ['csubsource', 'subsource', 'source'], fixed: 'Meta' },
   ];
 
@@ -117,6 +117,27 @@
   }
 
   /* =========================================================
+     Which required fields is this lead missing?
+
+     cProject, cProjectNomen and cClientNomen say which client and which
+     project a lead belongs to. A lead that reaches the CRM without them
+     cannot be routed to anyone, so they are required, not decorative.
+     phoneNumber is listed required too, but fixPhone judges it first and
+     reports a better reason, so callers check that before calling this.
+
+     Returns an array of field labels, empty when the lead is complete.
+     ========================================================= */
+  function missingRequired(lead) {
+    return FIELDS
+      .filter(function (f) { return f.req; })
+      .filter(function (f) {
+        const v = lead == null ? '' : lead[f.key];
+        return String(v == null ? '' : v).trim() === '';
+      })
+      .map(function (f) { return f.label; });
+  }
+
+  /* =========================================================
      Build a set of phone numbers that are ALREADY in the CRM.
 
      The CRM has no GET endpoint, but its web UI exports leads as CSV
@@ -157,6 +178,7 @@
 
   const api = {
     FIELDS: FIELDS,
+    missingRequired: missingRequired,
     phoneSetFromCSV: phoneSetFromCSV,
     FOREIGN_CC: FOREIGN_CC,
     EMAIL_ISH: EMAIL_ISH,

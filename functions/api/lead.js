@@ -20,6 +20,12 @@ const FIELDS = [
 
 const PHONE_RE = /^\+91[6-9]\d{9}$/;
 
+/* Required, and kept in step with lib.js by hand: this file is a Worker and
+   cannot import it. cProject, cProjectNomen and cClientNomen say which client
+   and project a lead belongs to; without them the CRM cannot route it, so an
+   incomplete lead is refused here as well as in the browser and the CLI. */
+const REQUIRED = ['firstName', 'cProject', 'cProjectNomen', 'cClientNomen'];
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -73,8 +79,13 @@ export async function onRequestPost({ request, env }) {
       error: 'phoneNumber must be +91 followed by 10 digits starting 6-9.',
     }, 422);
   }
-  if (!lead.firstName) {
-    return json({ ok: false, skipped: true, error: 'firstName is empty.' }, 422);
+  const missing = REQUIRED.filter((k) => !lead[k]);
+  if (missing.length) {
+    return json({
+      ok: false, skipped: true,
+      error: 'missing required: ' + missing.join(', '),
+      missing,
+    }, 422);
   }
 
   const upstream = env.UPSTREAM_URL || UPSTREAM_DEFAULT;
