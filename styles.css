@@ -52,11 +52,13 @@
 
 * { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+/* The page background lives on <html>, not <body>, so the ambient layer
+   painted by body::before at z-index -1 is actually visible. */
+html { -webkit-text-size-adjust: 100%; background: var(--bg); }
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: transparent;
   color: var(--on);
   font-family: 'Google Sans', 'Google Sans Text', 'Product Sans', Roboto,
                system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -476,4 +478,165 @@ tbody tr:hover { background: var(--surf-1); }
   .opt-inline input[type=password] { max-width: none; }
   .sp-t { display: none; }
   .sp { padding: 7px 8px; }
+}
+
+/* =======================================================================
+   Live feedback while posting. Driven by fx.js, which only adds classes —
+   see the top of that file for which DOM change maps to which class.
+   Everything here degrades to static if fx.js never loads.
+   ======================================================================= */
+
+/* Angle that the rotating borders share. Registered so it can be animated;
+   browsers without @property simply get a still gradient. */
+@property --spin {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.card { position: relative; }
+
+/* ---- rotating gradient border on the card that is working ---- */
+.card.working::before,
+.card.working::after {
+  content: '';
+  position: absolute; inset: -1px;
+  border-radius: inherit;
+  padding: 1.6px;
+  background: conic-gradient(from var(--spin),
+      transparent 0 48%,
+      var(--g-blue) 60%, var(--g-purple) 72%,
+      var(--g-red) 82%, var(--g-yellow) 90%,
+      transparent 96% 100%);
+  -webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+          mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  animation: spin 2.8s linear infinite;
+  pointer-events: none;
+}
+/* Second copy, blurred, reads as a glow rather than a line. */
+.card.working::after {
+  padding: 3px;
+  filter: blur(9px);
+  opacity: .55;
+  animation-duration: 2.8s;
+}
+@keyframes spin { to { --spin: 360deg; } }
+
+/* Finished: settle into a calm green edge instead of stopping dead. */
+.card.done {
+  border-color: color-mix(in srgb, var(--ok) 45%, var(--outline-v));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 9%, transparent), var(--sh-1);
+  transition: border-color .6s var(--ease), box-shadow .6s var(--ease);
+}
+
+/* ---- live badge in the Posting heading ---- */
+.live {
+  display: inline-flex; align-items: center; gap: 7px;
+  margin-top: 8px;
+  padding: 4px 12px 4px 9px;
+  border-radius: var(--r-full);
+  background: var(--surf-2); color: var(--on-var);
+  font-size: 11.5px; font-weight: 600;
+  letter-spacing: .4px; text-transform: uppercase;
+  transition: background .3s var(--ease), color .3s var(--ease);
+}
+.live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: currentColor; flex: none;
+}
+.is-working .live { background: var(--p-90); color: var(--p-40); }
+.is-working .live-dot { animation: beat 1.1s ease-in-out infinite; }
+@keyframes beat {
+  0%, 100% { transform: scale(1);   opacity: 1; }
+  50%      { transform: scale(1.5); opacity: .45; }
+}
+/* A success came back. */
+.live.ping { animation: ping .45s var(--ease); }
+@keyframes ping {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent); }
+  100% { box-shadow: 0 0 0 14px transparent; }
+}
+
+/* ---- progress bar ---- */
+.progress { position: relative; }
+.progress-fill { position: relative; overflow: hidden; }
+/* Sheen travelling along the filled part while posting. */
+.is-working .progress-fill::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(100deg,
+      transparent 20%,
+      rgba(255,255,255,.65) 50%,
+      transparent 80%);
+  animation: sheen 1.25s linear infinite;
+}
+@keyframes sheen { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.is-working .progress-fill {
+  box-shadow: 0 0 14px color-mix(in srgb, var(--g-purple) 60%, transparent);
+}
+.progress-fill.full {
+  background: linear-gradient(90deg, var(--ok), color-mix(in srgb, var(--ok) 60%, var(--g-blue)));
+}
+
+/* ---- each result row arriving ---- */
+#log tbody tr.fx-in { animation: rowIn .45s var(--ease) both; }
+@keyframes rowIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+#log tbody tr.fx-ok  { animation: rowIn .45s var(--ease) both, flashOk .9s var(--ease); }
+#log tbody tr.fx-bad { animation: rowIn .45s var(--ease) both, flashBad 1.1s var(--ease); }
+@keyframes flashOk  { 0% { background: color-mix(in srgb, var(--ok) 22%, transparent); } }
+@keyframes flashBad { 0%, 40% { background: color-mix(in srgb, var(--bd) 22%, transparent); } }
+
+/* ---- counters ticking over ---- */
+.stat.pop { animation: pop .4s var(--ease); }
+@keyframes pop {
+  0%   { transform: none; }
+  35%  { transform: translateY(-3px) scale(1.025); }
+  100% { transform: none; }
+}
+
+/* ---- ambient background, lifts while posting ---- */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: -1;
+  pointer-events: none;
+  opacity: .5;
+  transition: opacity .8s var(--ease);
+  background:
+    radial-gradient(42rem 42rem at 12% -10%, color-mix(in srgb, var(--g-blue) 11%, transparent), transparent 70%),
+    radial-gradient(34rem 34rem at 88% 4%,  color-mix(in srgb, var(--g-purple) 10%, transparent), transparent 70%),
+    radial-gradient(30rem 30rem at 70% 96%, color-mix(in srgb, var(--g-red) 7%, transparent), transparent 70%);
+}
+body.is-working::before { opacity: 1; animation: drift 14s ease-in-out infinite; }
+@keyframes drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(0, -14px, 0) scale(1.04); }
+}
+
+/* ---- the hero gradient breathes, so the page is never fully dead ---- */
+.grad {
+  background-size: 220% 100%;
+  animation: slide 9s ease-in-out infinite;
+}
+@keyframes slide {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* ---- the stepper pip for the live step pulses ---- */
+.is-working .sp.is-on .sp-n { animation: beat 1.4s ease-in-out infinite; }
+
+/* ---- honour the OS setting: keep colour, drop motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  .card.working::before, .card.working::after,
+  .is-working .progress-fill::after, .is-working .live-dot,
+  .is-working .sp.is-on .sp-n, body.is-working::before, .grad,
+  #log tbody tr.fx-in, #log tbody tr.fx-ok, #log tbody tr.fx-bad, .stat.pop {
+    animation: none !important;
+  }
+  .card.working::after { opacity: .35; }
 }

@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "wrangler pages dev .",
     "deploy": "wrangler pages deploy .",
-    "test": "node test.js",
+    "test": "node test.js && node test-fx.js",
     "test:sample": "node test.js sample.csv",
-    "push": "node push.js"
+    "push": "node push.js",
+    "test:fx": "node test-fx.js"
   }
 }
