@@ -4,65 +4,137 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
 <title>Lead Uploader — CSV to CRM</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+
+<!-- ===== top app bar ===== -->
 <header class="bar">
-  <h1>Lead Uploader</h1>
-  <span class="sub">CSV &rarr; phone filter &rarr; CRM</span>
-  <span id="health" class="pill pill-muted">checking proxy&hellip;</span>
+  <div class="bar-in">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22">
+          <defs>
+            <linearGradient id="gm" x1="0" y1="24" x2="24" y2="0">
+              <stop offset="0"   stop-color="#4285F4"/>
+              <stop offset=".45" stop-color="#9B72F2"/>
+              <stop offset=".8"  stop-color="#D96570"/>
+              <stop offset="1"   stop-color="#F2A60C"/>
+            </linearGradient>
+          </defs>
+          <path fill="url(#gm)" d="M12 2c.5 4.7 3.3 7.5 8 8-4.7.5-7.5 3.3-8 8-.5-4.7-3.3-7.5-8-8 4.7-.5 7.5-3.3 8-8z"/>
+        </svg>
+      </span>
+      <span class="brand-text">
+        <strong>Lead Uploader</strong>
+        <span class="sub">CSV &rarr; phone repair &rarr; CRM</span>
+      </span>
+    </div>
+    <span id="health" class="pill pill-muted">
+      <span class="pill-dot" aria-hidden="true"></span>checking proxy&hellip;
+    </span>
+  </div>
 </header>
 
 <main>
-  <!-- STEP 1 ------------------------------------------------------------ -->
+  <!-- ===== hero ===== -->
+  <div class="hero">
+    <h1 class="hero-h">Clean a messy export,<br><span class="grad">post it once.</span></h1>
+    <p class="hero-p">
+      Repairs Indian mobile numbers, catches duplicates and refuses rows it cannot fix —
+      then shows you everything before a single lead is sent.
+    </p>
+  </div>
+
+  <!-- ===== stepper ===== -->
+  <ol class="stepper" id="stepper">
+    <li class="sp is-on" data-for="step-upload"><span class="sp-n">1</span><span class="sp-t">Choose file</span></li>
+    <li class="sp" data-for="step-map"><span class="sp-n">2</span><span class="sp-t">Match columns</span></li>
+    <li class="sp" data-for="step-review"><span class="sp-n">3</span><span class="sp-t">Review</span></li>
+    <li class="sp" data-for="step-run"><span class="sp-n">4</span><span class="sp-t">Post</span></li>
+  </ol>
+
+  <!-- ===== STEP 1 ===== -->
   <section class="card" id="step-upload">
-    <h2><span class="n">1</span> Choose your CSV</h2>
+    <div class="card-h">
+      <span class="n">1</span>
+      <div>
+        <h2>Choose your CSV</h2>
+        <p class="card-sub">Straight from Google Sheets. No pre-cleaning needed.</p>
+      </div>
+    </div>
+
     <div id="drop" class="drop">
+      <svg class="drop-ico" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 16V4m0 0L8 8m4-4 4 4M4 15v2a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-2"/>
+      </svg>
       <p class="drop-main">Drop a CSV here, or <label class="link" for="file">browse</label></p>
-      <p class="drop-sub">Nothing is uploaded anywhere until you press Post.</p>
+      <p class="drop-sub">Read in your browser only. Nothing leaves this page until you press Post.</p>
       <input type="file" id="file" accept=".csv,text/csv" hidden>
     </div>
     <p id="file-info" class="hint"></p>
   </section>
 
-  <!-- STEP 2 ------------------------------------------------------------ -->
+  <!-- ===== STEP 2 ===== -->
   <section class="card hidden" id="step-map">
-    <h2><span class="n">2</span> Match your columns</h2>
-    <p class="hint">Auto-matched from your headers. Pick <em>Fixed value</em> to send the same text for every row.</p>
+    <div class="card-h">
+      <span class="n">2</span>
+      <div>
+        <h2>Match your columns</h2>
+        <p class="card-sub">Auto-matched from your headers. Choose <em>fixed value</em> to send the same text on every row.</p>
+      </div>
+    </div>
+
     <div id="mapping" class="grid"></div>
+
     <div class="opts">
       <label class="opt">
         <input type="checkbox" id="opt-dupes" checked>
-        <span>Skip duplicate phone numbers <small>(keeps the first of each)</small></span>
+        <span class="opt-b"><b>Skip duplicate phone numbers</b><small>Keeps the first of each. The CRM does not de-duplicate.</small></span>
       </label>
       <label class="opt">
         <input type="checkbox" id="opt-swap" checked>
-        <span>Fix rows where phone and email are swapped</span>
+        <span class="opt-b"><b>Fix swapped phone and email</b><small>Repairs rows where the two columns were filled the wrong way round.</small></span>
       </label>
+      <div class="opt opt-inline">
+        <span class="opt-b"><b>Send at once</b><small>Lower this if the CRM starts refusing requests.</small></span>
+        <span class="slide">
+          <input type="range" id="opt-conc" min="1" max="12" value="6">
+          <output id="conc-val">6</output>
+        </span>
+      </div>
       <label class="opt opt-inline">
-        <span>Send at once</span>
-        <input type="range" id="opt-conc" min="1" max="12" value="6">
-        <output id="conc-val">6</output>
-      </label>
-      <label class="opt opt-inline">
-        <span>Access key <small>(only if you set ACCESS_KEY)</small></span>
+        <span class="opt-b"><b>Access key</b><small>Only needed if you set <code>ACCESS_KEY</code> on the proxy.</small></span>
         <input type="password" id="opt-key" placeholder="leave blank if unset" autocomplete="off">
       </label>
     </div>
-    <button class="btn" id="btn-check">Check the numbers &rarr;</button>
+
+    <div class="row">
+      <button class="btn btn-go" id="btn-check">Check the numbers</button>
+    </div>
   </section>
 
-  <!-- STEP 3 ------------------------------------------------------------ -->
+  <!-- ===== STEP 3 ===== -->
   <section class="card hidden" id="step-review">
-    <h2><span class="n">3</span> Review</h2>
+    <div class="card-h">
+      <span class="n">3</span>
+      <div>
+        <h2>Review</h2>
+        <p class="card-sub">Nothing has been sent yet. Check the rejected group before you post.</p>
+      </div>
+    </div>
+
     <div class="stats" id="stats"></div>
-    <div class="tabs" id="tabs">
+
+    <div class="tabs" id="tabs" role="tablist">
       <button class="tab is-on" data-f="ready">Ready</button>
       <button class="tab" data-f="fixed">Repaired</button>
       <button class="tab" data-f="dupe">Duplicates</button>
       <button class="tab" data-f="bad">Rejected</button>
     </div>
+
     <div class="tablewrap">
       <table id="preview">
         <thead><tr><th>Row</th><th>Name</th><th>Phone</th><th>Email</th><th>City</th><th>Note</th></tr></thead>
@@ -70,24 +142,38 @@
       </table>
     </div>
     <p class="hint" id="preview-note"></p>
+
+    <div class="warn">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4m0 3h.01M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+      <span>Posting writes straight into your live CRM. It cannot be undone from here, and the CRM does not de-duplicate.</span>
+    </div>
+
     <div class="row">
       <button class="btn btn-go" id="btn-post">Post <span id="post-count">0</span> leads to CRM</button>
       <button class="btn btn-ghost" id="btn-dl-rejected">Download rejected rows</button>
     </div>
-    <p class="warn">Posting writes straight into your live CRM and cannot be undone from here.</p>
   </section>
 
-  <!-- STEP 4 ------------------------------------------------------------ -->
+  <!-- ===== STEP 4 ===== -->
   <section class="card hidden" id="step-run">
-    <h2><span class="n">4</span> Posting</h2>
+    <div class="card-h">
+      <span class="n">4</span>
+      <div>
+        <h2>Posting</h2>
+        <p class="card-sub">Every row is logged, so you can stop and resume without double-posting.</p>
+      </div>
+    </div>
+
     <div class="progress"><div class="progress-fill" id="bar"></div></div>
     <div class="stats" id="runstats"></div>
+
     <div class="row">
       <button class="btn btn-stop hidden" id="btn-stop">Stop</button>
       <button class="btn btn-ghost hidden" id="btn-resume">Resume remaining</button>
       <button class="btn btn-ghost hidden" id="btn-dl-report">Download report</button>
       <button class="btn btn-ghost hidden" id="btn-dl-failed">Download failed rows</button>
     </div>
+
     <div class="tablewrap tablewrap-log">
       <table id="log">
         <thead><tr><th>Row</th><th>Status</th><th>Phone</th><th>Detail</th></tr></thead>
@@ -95,9 +181,38 @@
       </table>
     </div>
   </section>
+
+  <footer class="foot">
+    Runs on your machine. Phone repair lives in <code>lib.js</code> and is shared by this
+    page, <code>push.js</code> and the tests.
+  </footer>
 </main>
 
 <script src="lib.js"></script>
 <script src="app.js"></script>
+<script>
+/* Keep the stepper in step with which cards are visible. Presentation only —
+   app.js owns the real flow and never reads this. */
+(function () {
+  var steps = ['step-upload', 'step-map', 'step-review', 'step-run'];
+  var pips = document.querySelectorAll('#stepper .sp');
+  function sync() {
+    var live = -1;
+    steps.forEach(function (id, i) {
+      var el = document.getElementById(id);
+      if (el && !el.classList.contains('hidden')) live = i;
+    });
+    pips.forEach(function (p, i) {
+      p.classList.toggle('is-on', i === live);
+      p.classList.toggle('is-done', i < live);
+    });
+  }
+  steps.forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) new MutationObserver(sync).observe(el, { attributes: true, attributeFilter: ['class'] });
+  });
+  sync();
+}());
+</script>
 </body>
 </html>
