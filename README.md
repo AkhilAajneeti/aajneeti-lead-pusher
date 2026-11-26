@@ -64,12 +64,52 @@ point at a different CRM endpoint.
 
 ## Run it locally
 
+Double-click **`start-tool.bat`**, or:
+
 ```bash
 npx wrangler pages dev .      # http://localhost:8788
 ```
 
 Opening `index.html` as a `file://` page will **not** work — there is no `/api/lead` then.
 The badge in the top right will say "proxy not reachable".
+
+---
+
+## Command line, no browser (`push.js`)
+
+For bulk runs this is the quickest route. It needs no proxy and no Cloudflare — Node
+reaches the CRM directly (CORS only restricts browsers).
+
+**Easiest:** drag a CSV onto **`push.bat`**. It shows a report, then asks before posting.
+
+**Or from cmd:**
+
+```bat
+node push.js "C:\path\to\leads.csv"           :: DRY RUN - checks, sends nothing
+node push.js "C:\path\to\leads.csv" --post    :: posts, after you type yes
+```
+
+| Option | What it does |
+|---|---|
+| `--post` | actually send; without it you always get a dry run |
+| `--allow-dupes` | send duplicate phone numbers too (default: skip) |
+| `--limit N` | only the first N sendable rows — good for a 1-row test |
+| `--concurrency N` | how many at once, 1–12 (default 6) |
+| `--resume` | skip rows already logged as `ok`, to retry a part-finished run |
+| `--yes` | skip the confirmation prompt (for scheduled runs) |
+| `--url URL` | post somewhere else |
+| `--log FILE` | log location (default `<csv>-log.csv`) |
+
+Safety built in: it is a dry run unless you pass `--post`, it then asks you to type `yes`,
+`Ctrl+C` stops it cleanly, and every row is logged so `--resume` never double-posts.
+
+**A sensible first run:**
+
+```bat
+node push.js "leads.csv"                      :: see the report
+node push.js "leads.csv" --post --limit 1     :: send ONE, check the CRM
+node push.js "leads.csv" --post --resume      :: send the rest
+```
 
 ---
 
@@ -138,6 +178,9 @@ All the shared logic is in `lib.js`, which has no DOM in it so it can be tested 
 | `functions/api/lead.js` | Cloudflare Pages Function: auth, validation, forwards to CRM |
 | `test.js` | headless tests |
 | `sample.csv` | messy fixture |
+| `push.js` | command-line poster, no browser needed |
+| `push.bat` | drag a CSV onto this to check then post |
+| `start-tool.bat` | double-click to start the web tool |
 
 ---
 

@@ -7,6 +7,7 @@
     "dev": "wrangler pages dev .",
     "deploy": "wrangler pages deploy .",
     "test": "node test.js",
-    "test:sample": "node test.js sample.csv"
+    "test:sample": "node test.js sample.csv",
+    "push": "node push.js"
   }
 }
