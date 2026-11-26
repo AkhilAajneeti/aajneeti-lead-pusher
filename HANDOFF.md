@@ -120,11 +120,26 @@ is expected to work, but say so honestly rather than claiming it is proven.
 
 ## Open items
 
-1. **Proxy → CRM hop untested.** The intended check is
-   `node push.js "leads.csv" --post --limit 1`, then look in the CRM.
-2. **`ACCESS_KEY` is not set.** If the Pages app is ever deployed publicly, anyone with
-   the URL can write to the CRM. Running locally (`127.0.0.1`) does not need it.
-3. **A `wrangler pages dev` server may still be running on port 8788** from testing.
+1. **~~Proxy → CRM hop untested.~~ RESOLVED — it was already proven, in the session that
+   wrote this file.** The evidence was on disk and went unnoticed:
+   `Downloads\Untitled spreadsheet - Sheet1-report.csv` is a `-report.csv`, the filename
+   only `app.js` produces (the browser UI), and `app.js` posts solely to `/api/lead`.
+   It records two rows `ok` with detail `true` — the CRM's own success body, relayed by
+   the proxy. Both leads (`testGupta` `+919582449101`, `test Goel` `+919560538181`) then
+   appear in a CRM UI export with `createdAt 2026-11-26 06:22:51` UTC = 11:52 IST,
+   matching the report file's 11:53 timestamp. So: browser → proxy → CRM works.
+
+   Note the old suggested check was wrong for the stated goal: `push.js` posts **direct
+   to the CRM**, not through the proxy, so `node push.js --post --limit 1` never
+   exercised the proxy at all. To test the proxy from the CLI, point it at one:
+   `--url http://127.0.0.1:8788/api/lead`.
+2. **~~`ACCESS_KEY` is not set.~~ The mechanism is now verified**, though you still have to
+   set the value when you deploy. Proven locally against a stand-in upstream: no key and
+   wrong key both give `401`; the correct key passes. `push.js` could not send a key at
+   all until now — `--key` was added for this.
+3. **~~A `wrangler pages dev` server may still be running on port 8788.~~** Still running
+   as of 2026-11-26 (PID varies). Left alone deliberately rather than killed. Harmless;
+   `taskkill /PID <pid> /F` if you want the port back.
 4. **Lead count discrepancy, unresolved.** The CRM shows 2865 total; 2426 came from this
    upload, leaving 439 unexplained — most likely pre-existing leads, but this could not be
    confirmed because the API has no read endpoint. Do not assert a cause without evidence.
@@ -134,6 +149,63 @@ is expected to work, but say so honestly rather than claiming it is proven.
 6. **Source CSVs are gone.** `Prestige Data - Sheet1.csv`, its backup, and the split files
    `prestigedata1/2/3.csv` are no longer in `C:\Users\aclde\Downloads`. Re-export from
    Google Sheets if needed — the tool accepts the raw messy export, no pre-cleaning.
+
+   Update: the Prestige export briefly reappeared and was confirmed to be **the same
+   data already uploaded** — 2439 rows → 2372 sendable / 54 dupes / 13 rejected,
+   reproducing the original run exactly. It was then deleted again. **Do not post it.**
+
+## The CRM *can* be read — just not over the API
+
+Not previously recorded, and it changes what is possible. The CRM's **web UI exports
+leads as CSV** (`name,emailAddress,phoneNumber,status,cSubSource,cProject,cPreference,
+cNextContactAt,createdAt,assignedUserId,assignedUserName`). There is still no read
+**endpoint**, so nothing automated can reconcile — but a human export can, and it is the
+evidence that settled open item 1.
+
+This is also the fix for the re-posting hazard: `push.js --exclude <crm-export.csv>`
+skips any lead whose number is already in the CRM. Numbers in the export go through the
+same repair as the input, so `p:9582449101` in an export matches `+919582449101` in a new
+sheet. 11 tests cover it.
+
+Open item 4 (439 unexplained leads) is answerable this way too: export everything from
+the CRM UI and compare. Items 4 and 5 cannot be fixed from this tool either way — the API
+has no delete, so removing the ~54 duplicates has to happen in the CRM UI.
+
+## The 9 foreign numbers (open, needs your decision)
+
+Extracted from the Prestige export before it was deleted. The CRM hard-rejects anything
+that is not `+91` + 10 digits, and the payload has no free-text field to park a number in,
+so **these cannot be posted through this API at all**. Entering them in the CRM UI by
+hand, or having the CRM relax its validation, are the only real options. Do not coerce
+them to `+91`.
+
+| Name | Phone | Email | City |
+|---|---|---|---|
+| Sandeep Karnwal | +61403657462 | rajiv.prithvee@yahoo.com | Ghaziabad |
+| Nayab Hafeez | +966531957451 | nayab.karvy@gmail.com | City |
+| Yogendra Chaudhary | +2349062837020 | dev047123@gmail.com | Delhi |
+| Abdulaziz Galadima Jemomi | +2348039114006 | abdulazizgaladima2022@gmail.com | kano |
+| Sheeraz Alam | +971559433878 | sheerazalam08@gmail.com | Aligarh |
+| Guddu Kumar | +966501653410 | guddupandey53@gmail.com | Delhi |
+| Mohammad Subhani | +966573076048 | Subhanimohammad89@gmail.com | Bihar |
+| Amit Bhatnagar | +96896126485 | amit1807@yahoo.com | Muscat |
+| Tahir Bhat | +971545105292 | tbhat515@gmail.com | Abu Dhabi |
+
+The 4 junk numbers (`1234567890`, `0000000000`, `*798564898`, `965887139`) are not
+recoverable and need no decision.
+
+## Deploying the web UI (blocked on you)
+
+`npx wrangler whoami` → **not authenticated**. `wrangler login` is an interactive browser
+OAuth flow, so an agent cannot complete it. You run:
+
+```bat
+npx wrangler login
+npx wrangler pages deploy . --project-name aajneeti-lead-pusher
+```
+
+Then set `ACCESS_KEY` in Pages → Settings → Environment variables to a long random string,
+or anyone with the URL can write to your CRM. The CLI then needs `--key <that value>`.
 
 ## Conventions to follow
 

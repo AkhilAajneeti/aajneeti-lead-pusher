@@ -116,8 +116,48 @@
     return { ok: true, value: '+91' + d, why: note };
   }
 
+  /* =========================================================
+     Build a set of phone numbers that are ALREADY in the CRM.
+
+     The CRM has no GET endpoint, but its web UI exports leads as CSV
+     (name,emailAddress,phoneNumber,status,...). Feeding that export back in
+     is the only way to avoid re-posting leads that are already there.
+
+     Returns a Set of '+91XXXXXXXXXX' strings. Anything unparseable is
+     ignored rather than guessed at.
+     ========================================================= */
+  function phoneSetFromCSV(text) {
+    const out = new Set();
+    const rows = parseCSV(text);
+    if (!rows.length) return out;
+
+    const h = findHeaderRow(rows);
+    const phoneField = FIELDS.find((f) => f.key === 'phoneNumber');
+    const names = [phoneField.label.toLowerCase()].concat(phoneField.alias);
+
+    let col = -1;
+    const header = (rows[h] || []).map((c) => c.trim().toLowerCase());
+    for (let i = 0; i < header.length; i++) {
+      if (names.indexOf(header[i]) !== -1) { col = i; break; }
+    }
+
+    for (let i = h + 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || !row.some((c) => c.trim() !== '')) continue;
+      /* Known column when we found one; otherwise scan every cell, so an
+         export with an unfamiliar header still contributes. */
+      const cells = col === -1 ? row : [row[col]];
+      for (let j = 0; j < cells.length; j++) {
+        const fx = fixPhone(cells[j]);
+        if (fx.ok) { out.add(fx.value); if (col !== -1) break; }
+      }
+    }
+    return out;
+  }
+
   const api = {
     FIELDS: FIELDS,
+    phoneSetFromCSV: phoneSetFromCSV,
     FOREIGN_CC: FOREIGN_CC,
     EMAIL_ISH: EMAIL_ISH,
     parseCSV: parseCSV,

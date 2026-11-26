@@ -12,6 +12,9 @@
  *   --url URL           override the CRM endpoint
  *   --log FILE          where to write the run log (default <csv>-log.csv)
  *   --resume            skip rows already marked ok in the log file
+ *   --exclude FILE      CSV of leads ALREADY in the CRM (export it from the CRM
+ *                       web UI); their phone numbers are skipped. Repeatable.
+ *   --key KEY           send x-access-key, for a proxy with ACCESS_KEY set
  *   --yes               skip the "type yes to continue" prompt
  */
 'use strict';
@@ -24,7 +27,8 @@ const L = require('./lib.js');
 const DEFAULT_URL = 'https://multiclientapi.aajneetiadvertising.com/';
 
 /* ---------- args ---------- */
-const TAKES_VALUE = ['limit', 'concurrency', 'url', 'log'];
+const TAKES_VALUE = ['limit', 'concurrency', 'url', 'log', 'key'];
+const REPEATABLE = ['exclude'];
 const BOOLEANS = ['post', 'allow-dupes', 'resume', 'yes'];
 
 const opts = {};
@@ -35,7 +39,13 @@ const loose = [];
     const a = argv[i];
     if (a.startsWith('--')) {
       const name = a.slice(2);
-      if (TAKES_VALUE.includes(name)) opts[name] = argv[++i];
+      const needsValue = REPEATABLE.includes(name) || TAKES_VALUE.includes(name);
+      if (needsValue && (i + 1 >= argv.length || String(argv[i + 1]).startsWith('--'))) {
+        console.error(a + ' needs a value, e.g. ' + a + ' <value>');
+        process.exit(1);
+      }
+      if (REPEATABLE.includes(name)) (opts[name] = opts[name] || []).push(argv[++i]);
+      else if (TAKES_VALUE.includes(name)) opts[name] = argv[++i];
       else if (BOOLEANS.includes(name)) opts[name] = true;
       else { console.error('Unknown option: ' + a); process.exit(1); }
     } else {
@@ -50,6 +60,7 @@ const file = loose[0];
 if (!file) {
   console.log('Usage: node push.js <file.csv> [--post] [--allow-dupes] [--limit N]');
   console.log('       [--concurrency N] [--url URL] [--log FILE] [--resume] [--yes]');
+  console.log('       [--exclude already-in-crm.csv] [--key ACCESS_KEY]');
   console.log('\nWithout --post it is a dry run: it checks everything and sends nothing.');
   process.exit(1);
 }
@@ -61,6 +72,8 @@ if (!fs.existsSync(file)) {
 const DO_POST = flag('post');
 const ALLOW_DUPES = flag('allow-dupes');
 const RESUME = flag('resume');
+const EXCLUDE = opts['exclude'] || [];
+const KEY = opt('key', '');
 const URL_ = opt('url', DEFAULT_URL);
 const CONC = Math.min(12, Math.max(1, Number(opt('concurrency', 6)) || 6));
 const LIMIT = Number(opt('limit', 0)) || 0;
@@ -105,8 +118,20 @@ const cell = (r, key) => {
   return (r[i] || '').trim();
 };
 
+/* ---------- already in the CRM ----------
+   The CRM has no read API, so the only trustworthy source for "what is
+   already in there" is a CSV exported from the CRM's own web UI. */
+const inCRM = new Set();
+for (const f of EXCLUDE) {
+  if (!fs.existsSync(f)) { console.error('--exclude file not found: ' + f); process.exit(1); }
+  const before = inCRM.size;
+  L.phoneSetFromCSV(fs.readFileSync(f, 'utf8')).forEach((v) => inCRM.add(v));
+  console.log('exclude  : ' + (inCRM.size - before) + ' new numbers from ' + path.basename(f));
+}
+if (inCRM.size) console.log('exclude  : ' + inCRM.size + ' numbers already in the CRM, will be skipped');
+
 const seen = new Map();
-const send = [], rejected = [], dupes = [];
+const send = [], rejected = [], dupes = [], skippedInCRM = [];
 
 data.forEach((r, idx) => {
   const line = idx + 1;
@@ -135,6 +160,10 @@ data.forEach((r, idx) => {
 
   if (!fx.ok) { rejected.push({ line, phone, why: fx.why, name: lead.firstName }); return; }
   if (!lead.firstName) { rejected.push({ line, phone, why: 'name is empty', name: '' }); return; }
+  if (inCRM.has(fx.value)) {
+    skippedInCRM.push({ line, phone: fx.value, name: lead.firstName });
+    return;
+  }
   if (seen.has(fx.value)) {
     dupes.push({ line, phone: fx.value, why: 'same as line ' + seen.get(fx.value), name: lead.firstName });
     if (!ALLOW_DUPES) return;
@@ -160,6 +189,7 @@ console.log('\n--- check ---------------------------------------------');
 console.log('  rows in file   : ' + data.length);
 console.log('  will be sent   : ' + queue.length);
 console.log('  duplicates     : ' + dupes.length + (ALLOW_DUPES ? ' (sending them too)' : ' (skipped)'));
+if (inCRM.size) console.log('  already in CRM : ' + skippedInCRM.length + ' (skipped)');
 console.log('  rejected       : ' + rejected.length);
 
 if (rejected.length) {
@@ -202,7 +232,9 @@ if (!queue.length) { console.log('\nNothing to send.'); process.exit(0); }
       try {
         const res = await fetch(URL_, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          headers: Object.assign(
+            { 'Content-Type': 'application/json', Accept: 'application/json' },
+            KEY ? { 'x-access-key': KEY } : {}),
           body: JSON.stringify(lead),
         });
         const text = (await res.text()).trim().slice(0, 120);

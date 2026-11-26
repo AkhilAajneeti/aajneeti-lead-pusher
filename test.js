@@ -106,5 +106,39 @@ if (file && fs.existsSync(file)) {
   rejects.forEach((x) => console.log('    ' + x));
 }
 
+/* ---------- phoneSetFromCSV: the "already in the CRM" guard ---------- */
+console.log('already-in-CRM set');
+{
+  /* A real CRM UI export, header and quoting as the CRM emits it. */
+  const crmExport =
+    'name,emailAddress,phoneNumber,status,cSubSource,cProject,cPreference,cNextContactAt,createdAt,assignedUserId,assignedUserName\n' +
+    '"test Goel",test@hotmail.com,+919560538181,New,Meta,testignLead,,,"2026-11-26 06:22:51",6a450,"Akhil Test2"\n' +
+    'testGupta,test@gmail.com,+919582449101,New,Meta,testignLead,,,"2026-11-26 06:22:51",6a450,"Akhil Test2"\n';
+  const set = L.phoneSetFromCSV(crmExport);
+  eq('picks up both numbers', set.size, 2);
+  eq('has first', set.has('+919560538181'), true);
+  eq('has second', set.has('+919582449101'), true);
+  eq('no false positive', set.has('+919999999999'), false);
+
+  /* Messy values in the export must normalise to the same key the pusher
+     builds, or the guard silently lets a duplicate through. */
+  const messy = 'name,phoneNumber\nA,p:9582449101\nB,919560538181\nC,p:+17248753621\n';
+  const m = L.phoneSetFromCSV(messy);
+  eq('normalises p: prefix', m.has('+919582449101'), true);
+  eq('normalises bare 91', m.has('+919560538181'), true);
+  eq('normalises wrong +1', m.has('+917248753621'), true);
+
+  /* Foreign and junk numbers are not valid keys; they must not enter the set. */
+  const bad = 'name,phoneNumber\nA,+971559433878\nB,1234567890\nC,\nD,965887139\n';
+  eq('foreign/junk excluded', L.phoneSetFromCSV(bad).size, 0);
+
+  /* An export with an unrecognised phone header still contributes, by scan. */
+  const odd = 'lead,mobile no\nA,+919560538181\n';
+  eq('unknown header still scanned', L.phoneSetFromCSV(odd).has('+919560538181'), true);
+
+  eq('empty input is safe', L.phoneSetFromCSV('').size, 0);
+  eq('header only is safe', L.phoneSetFromCSV('name,phoneNumber\n').size, 0);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

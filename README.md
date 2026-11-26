@@ -96,12 +96,36 @@ node push.js "C:\path\to\leads.csv" --post    :: posts, after you type yes
 | `--limit N` | only the first N sendable rows — good for a 1-row test |
 | `--concurrency N` | how many at once, 1–12 (default 6) |
 | `--resume` | skip rows already logged as `ok`, to retry a part-finished run |
+| `--exclude FILE` | CSV of leads **already in the CRM** — their numbers are skipped. Repeatable. |
+| `--key KEY` | send `x-access-key`, for a proxy that has `ACCESS_KEY` set |
 | `--yes` | skip the confirmation prompt (for scheduled runs) |
 | `--url URL` | post somewhere else |
 | `--log FILE` | log location (default `<csv>-log.csv`) |
 
 Safety built in: it is a dry run unless you pass `--post`, it then asks you to type `yes`,
 `Ctrl+C` stops it cleanly, and every row is logged so `--resume` never double-posts.
+
+### Not re-posting leads that are already in the CRM
+
+The CRM does not de-duplicate and has no read API, so **re-running an old export posts
+every row again**. `--resume` only protects you inside one run, against one log file.
+
+Across runs, use `--exclude`. The CRM's web UI can export leads as CSV
+(`name,emailAddress,phoneNumber,status,...`); pass that export back in and any lead
+already in the CRM is skipped:
+
+```bat
+:: 1. in the CRM web UI, export your existing leads  ->  already-in-crm.csv
+:: 2. dry run and read the "already in CRM" count
+node push.js "new-leads.csv" --exclude "already-in-crm.csv"
+:: 3. only then, post what is genuinely new
+node push.js "new-leads.csv" --exclude "already-in-crm.csv" --post
+```
+
+The numbers in the export are repaired the same way as the input (`p:9582449101`,
+`919582449101` and `+919582449101` all match the same lead), so a messy export still
+protects you. Foreign and junk numbers can never be valid keys, so they are never
+treated as "already there".
 
 **A sensible first run:**
 
