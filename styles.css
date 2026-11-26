@@ -496,7 +496,11 @@ tbody tr:hover { background: var(--surf-1); }
 
 .card { position: relative; }
 
-/* ---- rotating gradient border on the card that is working ---- */
+/* ---- rotating gradient border ----
+   .active = the step you are on, always. .working = a run in flight, brighter
+   and faster. Both use the same ring so the transition between them is calm. */
+.card.active::before,
+.card.active::after,
 .card.working::before,
 .card.working::after {
   content: '';
@@ -512,16 +516,21 @@ tbody tr:hover { background: var(--surf-1); }
           mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
   -webkit-mask-composite: xor;
           mask-composite: exclude;
-  animation: spin 2.8s linear infinite;
+  animation: spin 7s linear infinite;
+  opacity: .75;
   pointer-events: none;
+  transition: opacity .5s var(--ease);
 }
 /* Second copy, blurred, reads as a glow rather than a line. */
+.card.active::after,
 .card.working::after {
   padding: 3px;
-  filter: blur(9px);
-  opacity: .55;
-  animation-duration: 2.8s;
+  filter: blur(10px);
+  opacity: .3;
 }
+/* A run in flight: brighter, faster, and the glow opens up. */
+.card.working::before { animation-duration: 2.8s; opacity: 1; }
+.card.working::after  { animation-duration: 2.8s; opacity: .6; filter: blur(13px); }
 @keyframes spin { to { --spin: 360deg; } }
 
 /* Finished: settle into a calm green edge instead of stopping dead. */
@@ -604,14 +613,15 @@ body::before {
   content: '';
   position: fixed; inset: 0; z-index: -1;
   pointer-events: none;
-  opacity: .5;
+  opacity: .75;
   transition: opacity .8s var(--ease);
+  animation: drift 26s ease-in-out infinite;
   background:
     radial-gradient(42rem 42rem at 12% -10%, color-mix(in srgb, var(--g-blue) 11%, transparent), transparent 70%),
     radial-gradient(34rem 34rem at 88% 4%,  color-mix(in srgb, var(--g-purple) 10%, transparent), transparent 70%),
     radial-gradient(30rem 30rem at 70% 96%, color-mix(in srgb, var(--g-red) 7%, transparent), transparent 70%);
 }
-body.is-working::before { opacity: 1; animation: drift 14s ease-in-out infinite; }
+body.is-working::before { opacity: 1; animation-duration: 14s; }
 @keyframes drift {
   0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
   50%      { transform: translate3d(0, -14px, 0) scale(1.04); }
@@ -639,4 +649,112 @@ body.is-working::before { opacity: 1; animation: drift 14s ease-in-out infinite;
     animation: none !important;
   }
   .card.working::after { opacity: .35; }
+}
+
+/* =======================================================================
+   The landing view. Before any file is picked this is the whole page, so it
+   carries the futuristic treatment on its own rather than waiting for a run.
+   ======================================================================= */
+
+/* ---- faint grid, so the surface reads as a panel rather than paper ---- */
+main::before {
+  content: '';
+  position: fixed; inset: 0; z-index: -1;
+  pointer-events: none;
+  opacity: .5;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--on) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--on) 5%, transparent) 1px, transparent 1px);
+  background-size: 56px 56px;
+  /* fades out towards the bottom so it never fights the content */
+  -webkit-mask: linear-gradient(#000 0%, transparent 62%);
+          mask: linear-gradient(#000 0%, transparent 62%);
+}
+
+/* ---- dropzone: glowing, breathing, with a scan line crossing it ---- */
+.drop {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(60% 70% at 50% 0%, color-mix(in srgb, var(--g-blue) 7%, transparent), transparent 70%),
+    var(--surf-1);
+  border-color: color-mix(in srgb, var(--p-40) 35%, var(--outline));
+  animation: breathe 5s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--p-40) 0%, transparent); }
+  50%      { box-shadow: 0 0 26px -6px color-mix(in srgb, var(--p-40) 30%, transparent); }
+}
+
+/* the scan line */
+.drop::after {
+  content: '';
+  position: absolute; left: 0; right: 0; top: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+      transparent, var(--g-blue), var(--g-purple), transparent);
+  filter: blur(.5px);
+  opacity: .85;
+  animation: scan 3.4s ease-in-out infinite;
+}
+/* Animates top, not translateY: a percentage translate would resolve against
+   the line's own 2px height. This way it tracks the dropzone whatever size
+   it ends up, including on a phone. */
+@keyframes scan {
+  0%   { top: 0;    opacity: 0; }
+  12%  { opacity: .9; }
+  88%  { opacity: .9; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* dragging a file over it: the scan stops, everything snaps bright */
+.drop.hot { animation: none; }
+.drop.hot::after { animation: none; opacity: 0; }
+
+/* the upload glyph gets its own pulse */
+.drop-ico { animation: lift 3.4s ease-in-out infinite; }
+@keyframes lift {
+  0%, 100% { transform: translateY(0);    opacity: .9; }
+  50%      { transform: translateY(-5px); opacity: 1; }
+}
+
+/* ---- hero: a soft light behind the headline ---- */
+.hero { position: relative; }
+.hero::before {
+  content: '';
+  position: absolute;
+  left: -8%; top: -10%;
+  width: 60%; aspect-ratio: 1;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+      color-mix(in srgb, var(--g-purple) 18%, transparent), transparent 65%);
+  filter: blur(26px);
+  animation: orb 11s ease-in-out infinite;
+}
+@keyframes orb {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(26px, 14px, 0) scale(1.12); }
+}
+
+/* ---- the primary button carries a little light ---- */
+.btn-go {
+  background-image: linear-gradient(100deg,
+      var(--p-40), color-mix(in srgb, var(--g-purple) 38%, var(--p-40)));
+  box-shadow: 0 2px 14px -4px color-mix(in srgb, var(--p-40) 60%, transparent), var(--sh-1);
+}
+.btn-go:hover:not(:disabled) {
+  box-shadow: 0 4px 20px -4px color-mix(in srgb, var(--g-purple) 65%, transparent), var(--sh-2);
+}
+
+/* ---- health pill: a live dot, since it is a real check ---- */
+.pill-ok .pill-dot { animation: beat 2.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .drop, .drop::after, .drop-ico, .hero::before,
+  .pill-ok .pill-dot, main::before {
+    animation: none !important;
+  }
+  .drop::after { opacity: 0; }
 }

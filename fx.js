@@ -17,6 +17,46 @@
   var reduced = window.matchMedia
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  /* ---------- 0. which step is live ----------
+     app.js reveals a step by removing .hidden. The furthest revealed one is
+     where the user is, so it gets .active: the same gradient edge the posting
+     card uses, slower and dimmer, so the page looks alive before a run and
+     the eye is pointed at what to do next. Also drives the stepper pips.
+     This replaces the inline script index.html used to carry. */
+  var STEPS = ['step-upload', 'step-map', 'step-review', 'step-run'];
+
+  function syncSteps() {
+    var cards = STEPS.map(function (id) { return document.getElementById(id); });
+    var liveIdx = -1;
+    cards.forEach(function (el, i) {
+      if (el && !el.classList.contains('hidden')) liveIdx = i;
+    });
+    cards.forEach(function (el, i) {
+      if (!el) return;
+      var on = i === liveIdx;
+      if (on !== el.classList.contains('active')) el.classList.toggle('active', on);
+    });
+    var pips = document.querySelectorAll('#stepper .sp');
+    for (var i = 0; i < pips.length; i++) {
+      if ((i === liveIdx) !== pips[i].classList.contains('is-on')) {
+        pips[i].classList.toggle('is-on', i === liveIdx);
+      }
+      if ((i < liveIdx) !== pips[i].classList.contains('is-done')) {
+        pips[i].classList.toggle('is-done', i < liveIdx);
+      }
+    }
+  }
+
+  STEPS.forEach(function (id) {
+    var el = document.getElementById(id);
+    /* .active is set on these same elements, so filter to class and compare
+       before writing - see the #bar note below for why that matters. */
+    if (el) new MutationObserver(syncSteps).observe(el, {
+      attributes: true, attributeFilter: ['class'],
+    });
+  });
+  syncSteps();
+
   /* ---------- 1. working state ----------
      While posting, the body carries .is-working and the posting card gets the
      rotating gradient border. */

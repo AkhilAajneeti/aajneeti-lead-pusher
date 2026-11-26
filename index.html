@@ -192,29 +192,5 @@
 <script src="app.js"></script>
 <!-- Visual feedback only. Loads after app.js and never calls into it. -->
 <script src="fx.js"></script>
-<script>
-/* Keep the stepper in step with which cards are visible. Presentation only —
-   app.js owns the real flow and never reads this. */
-(function () {
-  var steps = ['step-upload', 'step-map', 'step-review', 'step-run'];
-  var pips = document.querySelectorAll('#stepper .sp');
-  function sync() {
-    var live = -1;
-    steps.forEach(function (id, i) {
-      var el = document.getElementById(id);
-      if (el && !el.classList.contains('hidden')) live = i;
-    });
-    pips.forEach(function (p, i) {
-      p.classList.toggle('is-on', i === live);
-      p.classList.toggle('is-done', i < live);
-    });
-  }
-  steps.forEach(function (id) {
-    var el = document.getElementById(id);
-    if (el) new MutationObserver(sync).observe(el, { attributes: true, attributeFilter: ['class'] });
-  });
-  sync();
-}());
-</script>
 </body>
 </html>

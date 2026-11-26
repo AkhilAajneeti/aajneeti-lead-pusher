@@ -81,9 +81,10 @@ class El {
   _find(sel) {
     const out = [];
     const want = (el) => {
-      /* compound selector first: it also starts with '.' */
+      /* compound selectors first: they also start with '.' or '#' */
       if (sel === '.card-h > div') return el.tagName === 'DIV' && el.parentElement &&
         el.parentElement.classList.contains('card-h');
+      if (sel === '#stepper .sp') return el.classList.contains('sp');
       if (sel.startsWith('#')) return el.id === sel.slice(1);
       if (sel.startsWith('.')) return el.classList.contains(sel.slice(1));
       return el.tagName === sel.toUpperCase();
@@ -181,6 +182,20 @@ const tbody = new El('tbody');
 table.appendChild(tbody);
 wrap.appendChild(table);
 
+/* the other three steps, hidden at load exactly as index.html has them */
+const stepUpload = new El('section', { id: 'step-upload', cls: 'card' });
+const stepMap = new El('section', { id: 'step-map', cls: 'card hidden' });
+const stepReview = new El('section', { id: 'step-review', cls: 'card hidden' });
+stepRun.classList.add('hidden');
+
+const stepper = new El('ol', { id: 'stepper' });
+const pips = [0, 1, 2, 3].map(() => stepper.appendChild(new El('li', { cls: 'sp' })));
+pips[0].classList.add('is-on');
+
+body.appendChild(stepper);
+body.appendChild(stepUpload);
+body.appendChild(stepMap);
+body.appendChild(stepReview);
 body.appendChild(stop);
 body.appendChild(stepRun);
 stepRun.appendChild(runstats);
@@ -205,6 +220,35 @@ new Function(src)();
 (async function () {
   console.log('fx.js behaviour');
   await tick();
+
+  /* ---- which step is live ---- */
+  eq('step 1 active at load', stepUpload.classList.contains('active'), true);
+  eq('hidden steps not active', stepMap.classList.contains('active'), false);
+  eq('run card not active at load', stepRun.classList.contains('active'), false);
+  eq('pip 1 on at load', pips[0].classList.contains('is-on'), true);
+
+  /* app.js reveals step 2 */
+  stepMap.classList.remove('hidden');
+  await tick();
+  eq('active moved to step 2', stepMap.classList.contains('active'), true);
+  eq('step 1 no longer active', stepUpload.classList.contains('active'), false);
+  eq('pip 1 now done', pips[0].classList.contains('is-done'), true);
+  eq('pip 2 now on', pips[1].classList.contains('is-on'), true);
+
+  /* and step 3, then step 4 */
+  stepReview.classList.remove('hidden');
+  await tick();
+  eq('active moved to step 3', stepReview.classList.contains('active'), true);
+  stepRun.classList.remove('hidden');
+  await tick();
+  eq('active moved to step 4', stepRun.classList.contains('active'), true);
+  eq('pip 4 on', pips[3].classList.contains('is-on'), true);
+  eq('pips 1-3 done', pips.slice(0, 3).every((p) => p.classList.contains('is-done')), true);
+
+  /* writing .active onto an observed element must settle, not feed itself */
+  const before = global.__fires || 0;
+  await tick(); await tick(); await tick();
+  eq('step sync settles', (global.__fires || 0) - before < 12, true);
 
   /* badge injected into the posting heading */
   const badge = doc.querySelector('#fx-live');
